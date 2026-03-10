@@ -144,7 +144,7 @@
   }
   @keyframes win-blink {
     0%,100% { background: var(--board-bg); }
-    15%,45% { background: #4ade80; }
+    15%,45% { background: #42a5f5; }
     30%,60% { background: var(--board-bg); }
   }
   @keyframes perfect-blink {
@@ -231,9 +231,9 @@
   .inst { font-size: 0.75rem; color: var(--muted); line-height: 1.6; }
   .inst strong { color: var(--text); }
 
-  #log-list { list-style: none; height: calc(5 * (0.72rem * 1.6 + 4px + 1px)); overflow-y: auto; }
-  #log-list li { font-size: 0.72rem; line-height: 1.6; color: var(--muted); padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
-  #log-list li.highlight { color: var(--gold); font-weight: 700; }
+  #log-list, #log-list-mobile { list-style: none; height: calc(5 * (0.72rem * 1.6 + 4px + 1px)); overflow-y: auto; }
+  #log-list li, #log-list-mobile li { font-size: 0.72rem; line-height: 1.6; color: var(--muted); padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  #log-list li.highlight, #log-list-mobile li.highlight { color: var(--gold); font-weight: 700; }
 
   .card-counts-table { display: flex; flex-direction: column; gap: 3px; }
   .count-row {
@@ -268,6 +268,12 @@
   }
   .dbg-card.used { opacity: 0.2; }
   .dbg-card.current { outline: 2px solid var(--gold); }
+
+  .mobile-only { display: none; }
+  @media (max-width: 600px) {
+    .desktop-only { display: none !important; }
+    .mobile-only { display: block; }
+  }
 </style>
 </head>
 <body>
@@ -282,10 +288,10 @@
       <div class="panel-title">デッキ順（デバッグ）</div>
       <div id="debug-deck-display" style="display:grid;grid-template-columns:repeat(13,26px);gap:3px;"></div>
     </div>
-    <div class="panel" style="width:100%;margin-top:10px;">
+    <div class="panel desktop-only" style="width:100%;margin-top:10px;">
       <ul id="log-list"></ul>
     </div>
-    <div class="panel" style="width:100%;margin-top:10px;">
+    <div class="panel desktop-only" style="width:100%;margin-top:10px;">
       <div class="panel-title">データ</div>
       <div class="stat-row"><span>ゲーム回数</span><span class="stat-val" id="game-count">0</span></div>
       <div class="stat-row"><span>勝利回数</span><span class="stat-val" id="win-count">0</span></div>
@@ -330,6 +336,18 @@
         • 全52枚置ければ勝利！+500<br>
         • 最後にすべて消したら完全勝利！+1000
       </p>
+    </div>
+
+    <div class="panel mobile-only">
+      <ul id="log-list-mobile"></ul>
+    </div>
+    <div class="panel mobile-only">
+      <div class="panel-title">データ</div>
+      <div class="stat-row"><span>ゲーム回数</span><span class="stat-val" id="game-count-mobile">0</span></div>
+      <div class="stat-row"><span>勝利回数</span><span class="stat-val" id="win-count-mobile">0</span></div>
+      <div class="stat-row"><span>内、完全勝利</span><span class="stat-val" id="perfect-count-mobile">0</span></div>
+      <div class="stat-row"><span>最高得点</span><span class="stat-val" id="best-score-mobile">—</span></div>
+      <div class="stat-row"><span>最低得点</span><span class="stat-val" id="worst-score-mobile">—</span></div>
     </div>
   </div>
 </div>
@@ -494,6 +512,12 @@ function addLog(msg,highlight=false){
   const list=document.getElementById('log-list');
   list.insertBefore(li,list.firstChild);
   while(list.children.length>40)list.removeChild(list.lastChild);
+
+  const liM=document.createElement('li');
+  liM.textContent=msg;
+  if(highlight)liM.className='highlight';
+  const listM=document.getElementById('log-list-mobile');
+  if(listM){listM.insertBefore(liM,listM.firstChild);while(listM.children.length>40)listM.removeChild(listM.lastChild);}
 }
 
 function drawCard(){
@@ -543,6 +567,7 @@ async function placeCard(idx){
   if(filledCells===9&&deck.length>0){
     await sleep(300);gameCount++;
     document.getElementById('game-count').textContent=gameCount;
+    const gcM=document.getElementById('game-count-mobile');if(gcM)gcM.textContent=gameCount;
     showOverlay('💀 ゲームオーバー',0);
     animating=false;return;
   }
@@ -608,11 +633,12 @@ function updateWinStats(isPerfect=false){
   if(isPerfect)perfectCount++;
   if(bestScore===null||score>bestScore)bestScore=score;
   if(worstScore===null||score<worstScore)worstScore=score;
-  document.getElementById('win-count').textContent=winCount;
-  document.getElementById('perfect-count').textContent=perfectCount;
-  document.getElementById('game-count').textContent=gameCount;
-  document.getElementById('best-score').textContent=bestScore.toLocaleString();
-  document.getElementById('worst-score').textContent=worstScore.toLocaleString();
+  const ids=['win-count','perfect-count','game-count','best-score','worst-score'];
+  const vals=[winCount,perfectCount,gameCount,bestScore.toLocaleString(),worstScore.toLocaleString()];
+  ids.forEach((id,i)=>{
+    const el=document.getElementById(id); if(el)el.textContent=vals[i];
+    const elM=document.getElementById(id+'-mobile'); if(elM)elM.textContent=vals[i];
+  });
 }
 
 function showOverlay(title,bonus){
@@ -631,9 +657,10 @@ function showOverlay(title,bonus){
   }
   const icon=isGameOver?'💀':isPerfect?'🌟':'🎉';
   const label=isGameOver?'Game Over':isPerfect?'完全勝利':'勝利';
-  const color=isGameOver?'#e94560':isPerfect?'#f5a623':'#4ade80';
+  const color=isGameOver?'#e94560':isPerfect?'#f5a623':'#42a5f5';
+  const bgColor=isGameOver?'rgba(0,0,0,0.3)':isPerfect?'rgba(180,120,0,0.35)':'rgba(20,80,160,0.45)';
   const wrap=document.getElementById('next-card-display');
-  wrap.innerHTML=`<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:rgba(0,0,0,0.3);border-radius:8px;padding:6px;box-sizing:border-box;">
+  wrap.innerHTML=`<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:${bgColor};border-radius:8px;padding:6px;box-sizing:border-box;">
     <span style="font-size:1.5rem;line-height:1;">${icon}</span>
     <span style="font-size:0.65rem;font-weight:700;color:${color};letter-spacing:1px;">${label}</span>
     <span style="font-family:'Fredoka One',cursive;font-size:0.85rem;color:#f5a623;line-height:1.2;">${score.toLocaleString()}</span>
