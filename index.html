@@ -251,6 +251,7 @@
   .mini-card.zero { opacity: 0.25; }
   .mini-card.clickable { cursor: pointer; }
   .mini-card.clickable:hover { transform: scale(1.2); outline: 1px solid var(--gold); }
+  .mini-card.held-card { outline: 2px solid rgba(245,166,35,0.8); box-shadow: 0 0 4px rgba(245,166,35,0.35); }
 
   .deck-popup-btn {
     background: rgba(255,255,255,0.07); color: var(--text);
@@ -279,7 +280,7 @@
 <body>
 
 <h1>🐾 Whose Feet?</h1>
-<p class="subtitle">動物とその足跡を揃えて消そう！ <span style="font-size:0.7rem;opacity:0.5;">Ver2.02</span></p>
+<p class="subtitle">動物とその足跡を揃えて消そう！ <span style="font-size:0.7rem;opacity:0.5;">Ver2.01c</span></p>
 
 <div class="game-wrap">
   <div class="board-section">
@@ -310,11 +311,6 @@
         </div>
         <span class="deck-count" id="deck-count-label">残り 52枚</span>
       </div>
-    </div>
-
-    <div id="debug-deck-panel-mobile" class="panel mobile-only" style="display:none;">
-      <div class="panel-title">デッキ順（デバッグ）</div>
-      <div id="debug-deck-display-mobile" style="display:grid;grid-template-columns:repeat(9,26px);gap:3px;"></div>
     </div>
 
     <div class="panel">
@@ -430,8 +426,9 @@ function highlightCells(on) {
 function updateUI() {
   document.getElementById('score').textContent=score.toLocaleString();
   document.getElementById('cleared-count').textContent=clearedCount+'枚';
-  document.getElementById('deck-remain').textContent=deck.length+'枚';
-  document.getElementById('deck-count-label').textContent='残り '+deck.length+'枚';
+  const remaining=deck.length+(heldCard?1:0);
+  document.getElementById('deck-remain').textContent=remaining+'枚';
+  document.getElementById('deck-count-label').textContent='残り '+remaining+'枚';
   renderCardCounts();
   renderDebugDeck();
 }
@@ -452,28 +449,42 @@ function renderCardCounts() {
       if (c.type==='joker') counts['joker']++;
       else counts[c.animal+'_'+c.type]++;
     }
+    // 手持ちカードもカウントに含める（表示用）
+    if (heldCard) {
+      if (heldCard.type==='joker') counts['joker']++;
+      else counts[heldCard.animal+'_'+heldCard.type]++;
+    }
   }
+  // 手持ちカードの種別を特定
+  const heldKey = heldCard ? (heldCard.type==='joker' ? 'joker' : heldCard.animal+'_'+heldCard.type) : null;
   const el=document.getElementById('card-counts');
   const LABEL={bird:'鳥',cat:'猫',monkey:'猿',pig:'豚',horse:'馬',frog:'蛙'};
   let html='<div class="card-counts-table">';
   for (const a of ANIMALS) {
     const d=ANIMAL_EMOJI[a];
     const fullN=counts[a+'_full'], trackN=counts[a+'_track'];
+    const isHeldFull = heldKey===a+'_full';
+    const isHeldTrack = heldKey===a+'_track';
     let fc='',tc='';
     for (let i=0;i<4;i++){
       const gone=i>=fullN, cl=isEdit&&!gone;
-      fc+=`<div class="mini-card ${d.cssClass}${gone?' zero':''}${cl?' clickable':''}" ${cl?`onclick="editAddCard('full','${a}')"`:''}>${d.full}</div>`;
+      // 手持ちカードは残り枚数の一番右（インデックス fullN-1）をハイライト
+      const isCurrent = !isEdit && isHeldFull && i===fullN-1;
+      fc+=`<div class="mini-card ${d.cssClass}${gone?' zero':''}${cl?' clickable':''}${isCurrent?' held-card':''}" ${cl?`onclick="editAddCard('full','${a}')"`:''}>${d.full}</div>`;
     }
     for (let i=0;i<4;i++){
       const gone=i>=trackN, cl=isEdit&&!gone;
-      tc+=`<div class="mini-card ${d.cssClass} track${gone?' zero':''}${cl?' clickable':''}" ${cl?`onclick="editAddCard('track','${a}')"`:''}>${TRACK_EMOJI[a]}</div>`;
+      const isCurrent = !isEdit && isHeldTrack && i===trackN-1;
+      tc+=`<div class="mini-card ${d.cssClass} track${gone?' zero':''}${cl?' clickable':''}${isCurrent?' held-card':''}" ${cl?`onclick="editAddCard('track','${a}')"`:''}>${TRACK_EMOJI[a]}</div>`;
     }
     html+=`<div class="count-row"><span class="count-animal-label">${LABEL[a]}</span><div class="count-cards">${fc}</div><div style="width:3px"></div><div class="count-cards">${tc}</div></div>`;
   }
   const jn=counts['joker']; let jc='';
+  const isHeldJoker = heldKey==='joker';
   for (let i=0;i<4;i++){
     const gone=i>=jn, cl=isEdit&&!gone;
-    jc+=`<div class="mini-card card-joker${gone?' zero':''}${cl?' clickable':''}" ${cl?`onclick="editAddCard('joker',null)"`:''}">💀</div>`;
+    const isCurrent = !isEdit && isHeldJoker && i===jn-1;
+    jc+=`<div class="mini-card card-joker${gone?' zero':''}${cl?' clickable':''}${isCurrent?' held-card':''}" ${cl?`onclick="editAddCard('joker',null)"`:''}">💀</div>`;
   }
   html+=`<div class="count-row"><span class="count-animal-label" style="font-size:0.5rem">Jkr</span><div class="count-cards">${jc}</div></div></div>`;
   el.innerHTML=html;
@@ -484,7 +495,7 @@ function cardHTML(card) {
   if (card.type==='joker') return `<div class="card-face card-joker"><span class="card-emoji">💀</span><span class="card-label">JOKER</span></div>`;
   const d=ANIMAL_EMOJI[card.animal];
   const emoji=card.type==='full'?d.full:TRACK_EMOJI[card.animal];
-  const label=d.label+(card.type==='track'?'(足跡)':'');
+  const label=d.label+(card.type==='track'?'(足跡)':'(動物)');  
   const tc=card.type==='track'?' track':'';
   return `<div class="card-face ${d.cssClass}${tc}"><span class="card-emoji">${emoji}</span><span class="card-label">${label}</span></div>`;
 }
@@ -538,7 +549,7 @@ async function placeCard(idx){
   const placed=heldCard; heldCard=null;
   renderNextCard();renderBoard();updateUI();
   await sleep(50);
-  const pl=placed.type==='joker'?'ジョーカー':ANIMAL_EMOJI[placed.animal].label+(placed.type==='track'?'足跡':'');
+  const pl=placed.type==='joker'?'ジョーカー':ANIMAL_EMOJI[placed.animal].label+(placed.type==='track'?'足跡':'動物');
   addLog(`カード配置（${pl}）`);
   const toVanish=getVanishSet(idx);
   if(toVanish.size>0){
@@ -719,12 +730,9 @@ function renderDebugDeck(){
   if(!debugMode)return;
   const panel=document.getElementById('debug-deck-panel');
   if(panel)panel.style.display='';
-  const panelM=document.getElementById('debug-deck-panel-mobile');
-  if(panelM)panelM.style.display='';
   const el=document.getElementById('debug-deck-display');
-  const elM=document.getElementById('debug-deck-display-mobile');
   if(!el)return;
-  if(!debugDeckSnapshot||debugDeckSnapshot.length===0){el.innerHTML='';if(elM)elM.innerHTML='';return;}
+  if(!debugDeckSnapshot||debugDeckSnapshot.length===0){el.innerHTML='';return;}
   const actualDrawn=debugDeckSnapshot.length-deck.length;
   const totalDrawn=actualDrawn;
   let html='';
@@ -737,12 +745,11 @@ function renderDebugDeck(){
       const d=ANIMAL_EMOJI[card.animal];
       cssClass=d.cssClass+(card.type==='track'?' track':'');
       emoji=card.type==='full'?d.full:TRACK_EMOJI[card.animal];
-      label=d.label+(card.type==='track'?'跡':'');
+      label=d.label+(card.type==='track'?'足跡':'動物');
     }
     html+=`<div class="dbg-card ${cssClass}${placed?' used':''}${isCurrent?' current':''}">${emoji}<span style="font-size:0.5rem;opacity:0.8">${label}</span></div>`;
   });
   el.innerHTML=html;
-  if(elM)elM.innerHTML=html;
 }
 
 function buildDebugDeck(){
@@ -769,7 +776,6 @@ function exitDebug(){
   document.getElementById('debug-link').style.display='block';
   document.getElementById('normal-link').style.display='none';
   document.getElementById('debug-deck-panel').style.display='none';
-  const panelM=document.getElementById('debug-deck-panel-mobile');if(panelM)panelM.style.display='none';
   document.getElementById('edit-status').style.display='none';
   initGame();
 }
