@@ -279,7 +279,7 @@
 <body>
 
 <h1>🐾 Whose Feet?</h1>
-<p class="subtitle">動物とその足跡を揃えて消そう！ <span style="font-size:0.7rem;opacity:0.5;">Ver2.01</span></p>
+<p class="subtitle">動物とその足跡を揃えて消そう！ <span style="font-size:0.7rem;opacity:0.5;">Ver2.02</span></p>
 
 <div class="game-wrap">
   <div class="board-section">
@@ -310,6 +310,11 @@
         </div>
         <span class="deck-count" id="deck-count-label">残り 52枚</span>
       </div>
+    </div>
+
+    <div id="debug-deck-panel-mobile" class="panel mobile-only" style="display:none;">
+      <div class="panel-title">デッキ順（デバッグ）</div>
+      <div id="debug-deck-display-mobile" style="display:grid;grid-template-columns:repeat(9,26px);gap:3px;"></div>
     </div>
 
     <div class="panel">
@@ -714,9 +719,12 @@ function renderDebugDeck(){
   if(!debugMode)return;
   const panel=document.getElementById('debug-deck-panel');
   if(panel)panel.style.display='';
+  const panelM=document.getElementById('debug-deck-panel-mobile');
+  if(panelM)panelM.style.display='';
   const el=document.getElementById('debug-deck-display');
+  const elM=document.getElementById('debug-deck-display-mobile');
   if(!el)return;
-  if(!debugDeckSnapshot||debugDeckSnapshot.length===0){el.innerHTML='';return;}
+  if(!debugDeckSnapshot||debugDeckSnapshot.length===0){el.innerHTML='';if(elM)elM.innerHTML='';return;}
   const actualDrawn=debugDeckSnapshot.length-deck.length;
   const totalDrawn=actualDrawn;
   let html='';
@@ -734,6 +742,7 @@ function renderDebugDeck(){
     html+=`<div class="dbg-card ${cssClass}${placed?' used':''}${isCurrent?' current':''}">${emoji}<span style="font-size:0.5rem;opacity:0.8">${label}</span></div>`;
   });
   el.innerHTML=html;
+  if(elM)elM.innerHTML=html;
 }
 
 function buildDebugDeck(){
@@ -760,6 +769,7 @@ function exitDebug(){
   document.getElementById('debug-link').style.display='block';
   document.getElementById('normal-link').style.display='none';
   document.getElementById('debug-deck-panel').style.display='none';
+  const panelM=document.getElementById('debug-deck-panel-mobile');if(panelM)panelM.style.display='none';
   document.getElementById('edit-status').style.display='none';
   initGame();
 }
@@ -779,4 +789,3 @@ initGame();
 </div>
 </body>
 </html>
-
