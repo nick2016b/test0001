@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Whose Feet?</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap');
+
+  :root {
+    --bg: #1a1a2e;
+    --panel: #16213e;
+    --board-bg: #0f3460;
+    --cell-bg: #1a4a7a;
+    --cell-hover: #245a8a;
+    --accent: #e94560;
+    --gold: #f5a623;
+    --green: #4ade80;
+    --text: #e8f4f8;
+    --muted: #8ab4c8;
+    --shadow: 0 4px 20px rgba(0,0,0,0.5);
+    --card-w: 88px;
+    --card-h: 108px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Nunito', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px;
+    background-image: radial-gradient(ellipse at 20% 50%, rgba(233,69,96,0.08) 0%, transparent 60%),
+                      radial-gradient(ellipse at 80% 20%, rgba(67,170,255,0.08) 0%, transparent 60%);
+  }
+
+  h1 {
+    font-family: 'Fredoka One', cursive;
+    font-size: 2.4rem;
+    color: var(--gold);
+    letter-spacing: 2px;
+    text-shadow: 0 2px 10px rgba(245,166,35,0.4);
+    margin-bottom: 4px;
+  }
+
+  .subtitle { color: var(--muted); font-size: 0.85rem; margin-bottom: 16px; padding-left: 2em; }
+
+  .game-wrap {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+    max-width: 920px;
+  }
+
+  .board-section { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+
+  .board {
+    display: grid;
+    grid-template-columns: repeat(3, var(--card-w));
+    grid-template-rows: repeat(3, var(--card-h));
+    gap: 8px;
+    background: var(--board-bg);
+    padding: 14px;
+    border-radius: 18px;
+    box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .cell {
+    width: var(--card-w);
+    height: var(--card-h);
+    background: var(--cell-bg);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    cursor: default;
+    border: 2px solid rgba(255,255,255,0.06);
+    position: relative;
+    transition: transform 0.15s, box-shadow 0.15s;
+    overflow: hidden;
+  }
+
+  .cell.empty.can-place {
+    cursor: pointer;
+    border-color: rgba(245,166,35,0.4);
+    background: rgba(245,166,35,0.08);
+  }
+  .cell.empty.can-place:hover {
+    background: rgba(245,166,35,0.18);
+    border-color: var(--gold);
+    transform: scale(1.04);
+    box-shadow: 0 0 14px rgba(245,166,35,0.35);
+  }
+
+  .cell.occupied { cursor: default; }
+
+  .card-face {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    border-radius: 8px;
+    position: absolute;
+    top: 0; left: 0;
+    transition: opacity 0.1s;
+  }
+
+  .card-emoji { font-size: 2.2rem; line-height: 1; }
+  .card-label { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.5px; opacity: 0.85; }
+
+  .card-bird    { background: linear-gradient(135deg, #b71c1c 0%, #ef5350 100%); }
+  .card-cat     { background: linear-gradient(135deg, #9c27b0 0%, #ce93d8 100%); }
+  .card-monkey  { background: linear-gradient(135deg, #b8860b 0%, #d4a017 100%); }
+  .card-pig     { background: linear-gradient(135deg, #c2185b 0%, #f48fb1 100%); }
+  .card-horse   { background: linear-gradient(135deg, #1565c0 0%, #42a5f5 100%); }
+  .card-frog    { background: linear-gradient(135deg, #00695c 0%, #26a69a 100%); }
+  .card-joker   { background: linear-gradient(135deg, #37474f 0%, #607d8b 100%); }
+
+  .card-face.track { }
+
+  @keyframes vanish {
+    0%   { transform: scale(1);   opacity: 1; }
+    40%  { transform: scale(1.18); opacity: 1; filter: brightness(2); }
+    100% { transform: scale(0);   opacity: 0; }
+  }
+  .cell.vanishing .card-face { animation: vanish 0.45s ease-in forwards; }
+
+  @keyframes gameover-blink {
+    0%,100% { background: var(--board-bg); }
+    15%,45% { background: #e94560; }
+    30%,60% { background: var(--board-bg); }
+  }
+  @keyframes win-blink {
+    0%,100% { background: var(--board-bg); }
+    15%,45% { background: #42a5f5; }
+    30%,60% { background: var(--board-bg); }
+  }
+  @keyframes perfect-blink {
+    0%,100% { background: var(--board-bg); }
+    15%,45% { background: #f5a623; }
+    30%,60% { background: var(--board-bg); }
+  }
+  .board.gameover { animation: gameover-blink 0.8s ease-in-out forwards; }
+  .board.win { animation: win-blink 0.8s ease-in-out forwards; }
+  .board.perfect { animation: perfect-blink 0.8s ease-in-out forwards; }
+  .board.gameover .cell.occupied .card-face { }
+
+  @keyframes joker-blink {
+    0%   { opacity: 1; filter: brightness(1); }
+    15%  { opacity: 0.1; filter: brightness(3); }
+    30%  { opacity: 1; filter: brightness(1); }
+    45%  { opacity: 0.1; filter: brightness(3); }
+    60%  { opacity: 1; filter: brightness(1); }
+    75%  { opacity: 0.1; filter: brightness(3); }
+    88%  { transform: scale(1.2); opacity: 1; filter: brightness(3); }
+    100% { transform: scale(0);  opacity: 0; }
+  }
+  .cell.vanishing-joker .card-face { animation: joker-blink 0.7s ease-in forwards; }
+
+  .sidebar { display: flex; flex-direction: column; gap: 14px; min-width: 200px; }
+
+  .panel {
+    background: var(--panel);
+    border-radius: 14px;
+    padding: 14px 16px;
+    border: 1px solid rgba(255,255,255,0.05);
+    box-shadow: var(--shadow);
+  }
+
+  .panel-title {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  .score-big {
+    font-family: 'Fredoka One', cursive;
+    font-size: 2.8rem;
+    color: var(--gold);
+    line-height: 1;
+    text-shadow: 0 2px 10px rgba(245,166,35,0.3);
+  }
+
+  .stat-row { display: flex; justify-content: space-between; font-size: 0.82rem; margin-top: 4px; }
+  .stat-val { font-weight: 700; color: var(--green); }
+
+  .next-card-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+
+  .next-card {
+    width: var(--card-w);
+    height: var(--card-h);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+    border: 2px solid rgba(255,255,255,0.12);
+    position: relative;
+  }
+
+  .deck-count { font-size: 0.78rem; color: var(--muted); }
+
+  .btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 10px;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.1s, opacity 0.1s;
+  }
+  .btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.4); }
+  .btn:active:not(:disabled) { transform: translateY(0); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-primary { background: var(--accent); color: #fff; width: 100%; }
+
+  .inst { font-size: 0.75rem; color: var(--muted); line-height: 1.6; }
+  .inst strong { color: var(--text); }
+
+  #log-list, #log-list-mobile { list-style: none; height: calc(5 * (0.72rem * 1.6 + 4px + 1px)); overflow-y: auto; }
+  #log-list li, #log-list-mobile li { font-size: 0.72rem; line-height: 1.6; color: var(--muted); padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  #log-list li.highlight, #log-list-mobile li.highlight { color: var(--gold); font-weight: 700; }
+
+  .card-counts-table { display: flex; flex-direction: column; gap: 3px; }
+  .count-row {
+    display: flex; align-items: center; gap: 3px;
+    background: rgba(255,255,255,0.04); border-radius: 6px; padding: 3px 5px;
+  }
+  .count-animal-label { font-size: 0.58rem; color: var(--muted); width: 22px; flex-shrink: 0; text-align: center; }
+  .count-cards { display: flex; gap: 2px; flex: 1; }
+  .mini-card {
+    width: 18px; height: 22px; border-radius: 3px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.6rem; flex-shrink: 0; line-height: 1;
+  }
+  .mini-card.track { }
+  .mini-card.zero { opacity: 0.25; }
+  .mini-card.clickable { cursor: pointer; }
+  .mini-card.clickable:hover { transform: scale(1.2); outline: 1px solid var(--gold); }
+
+  .deck-popup-btn {
+    background: rgba(255,255,255,0.07); color: var(--text);
+    border: 1px solid rgba(255,255,255,0.12); border-radius: 10px;
+    font-family: 'Nunito', sans-serif; font-size: 0.95rem; font-weight: 700;
+    padding: 10px 24px; cursor: pointer; transition: all 0.15s; width: 100%;
+  }
+  .deck-popup-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); transform: scale(1.03); }
+
+  .dbg-card {
+    width: 26px; height: 32px; border-radius: 4px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-size: 0.7rem; line-height: 1.1; flex-shrink: 0;
+    border: 1px solid rgba(255,255,255,0.08); transition: opacity 0.2s;
+  }
+  .dbg-card.used { opacity: 0.2; }
+  .dbg-card.current { outline: 2px solid var(--gold); }
+
+  .mobile-only { display: none; }
+  @media (max-width: 600px) {
+    .desktop-only { display: none !important; }
+    .mobile-only { display: block; }
+  }
+</style>
+</head>
+<body>
+
+<h1>🐾 Whose Feet?</h1>
+<p class="subtitle">動物とその足跡を揃えて消そう！ <span style="font-size:0.7rem;opacity:0.5;">Ver2.01</span></p>
+
+<div class="game-wrap">
+  <div class="board-section">
+    <div class="board" id="board"></div>
+    <div id="debug-deck-panel" class="panel" style="width:100%;margin-top:10px;display:none;">
+      <div class="panel-title">デッキ順（デバッグ）</div>
+      <div id="debug-deck-display" style="display:grid;grid-template-columns:repeat(13,26px);gap:3px;"></div>
+    </div>
+    <div class="panel desktop-only" style="width:100%;margin-top:10px;">
+      <ul id="log-list"></ul>
+    </div>
+    <div class="panel desktop-only" style="width:100%;margin-top:10px;">
+      <div class="panel-title">データ</div>
+      <div class="stat-row"><span>ゲーム回数</span><span class="stat-val" id="game-count">0</span></div>
+      <div class="stat-row"><span>勝利回数</span><span class="stat-val" id="win-count">0</span></div>
+      <div class="stat-row"><span>内、完全勝利</span><span class="stat-val" id="perfect-count">0</span></div>
+      <div class="stat-row"><span>最高得点</span><span class="stat-val" id="best-score">—</span></div>
+      <div class="stat-row"><span>最低得点</span><span class="stat-val" id="worst-score">—</span></div>
+    </div>
+  </div>
+
+  <div class="sidebar">
+    <div class="panel">
+      <div class="panel-title">次のカード</div>
+      <div class="next-card-wrap">
+        <div class="next-card" id="next-card-display">
+          <div class="card-face card-joker" style="display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:#aaa">?</div>
+        </div>
+        <span class="deck-count" id="deck-count-label">残り 52枚</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">残り枚数</div>
+      <div id="edit-status" style="display:none;font-size:0.68rem;color:var(--gold);margin-bottom:6px;">クリックしてデッキを作成: <span id="edit-count">0</span>/52</div>
+      <div id="card-counts"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">スコア</div>
+      <div class="score-big" id="score">0</div>
+      <div class="stat-row"><span>消したカード</span><span class="stat-val" id="cleared-count">0枚</span></div>
+      <div class="stat-row"><span>残りデッキ</span><span class="stat-val" id="deck-remain">52枚</span></div>
+    </div>
+
+    <div class="panel">
+      <p class="inst">
+        <strong>ルール：</strong><br>
+        • 動物 + 足跡が縦か横に隣接すれば消える<br>
+        • 隣のジョーカーも一緒に消える（得点には無関係）<br>
+        • 2枚消滅は+100、同時消滅は+100/枚<br>
+        • ジョーカー3枚が縦か横に揃えば消えて+300<br>
+        • 9マス埋まったらゲームオーバー<br>
+        • 全52枚置ければ勝利！+500<br>
+        • 最後にすべて消したら完全勝利！+1000
+      </p>
+    </div>
+
+    <div class="panel mobile-only">
+      <ul id="log-list-mobile"></ul>
+    </div>
+    <div class="panel mobile-only">
+      <div class="panel-title">データ</div>
+      <div class="stat-row"><span>ゲーム回数</span><span class="stat-val" id="game-count-mobile">0</span></div>
+      <div class="stat-row"><span>勝利回数</span><span class="stat-val" id="win-count-mobile">0</span></div>
+      <div class="stat-row"><span>内、完全勝利</span><span class="stat-val" id="perfect-count-mobile">0</span></div>
+      <div class="stat-row"><span>最高得点</span><span class="stat-val" id="best-score-mobile">—</span></div>
+      <div class="stat-row"><span>最低得点</span><span class="stat-val" id="worst-score-mobile">—</span></div>
+    </div>
+  </div>
+</div>
+
+<div id="deck-popup-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:100;align-items:center;justify-content:center;" onclick="closeDeckPopup(event)">
+  <div style="background:#1e2a3a;border:1px solid rgba(255,255,255,0.15);border-radius:14px;padding:24px 28px;min-width:220px;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,0.6);">
+    <div style="font-size:0.8rem;font-weight:700;color:#a0aec0;letter-spacing:1px;margin-bottom:16px;">デッキ選択</div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <button class="deck-popup-btn" onclick="chooseDeckMode('standard')">📋 標準デッキ</button>
+      <button class="deck-popup-btn" onclick="chooseDeckMode('edit')">✏️ 新規デッキ</button>
+      <button class="deck-popup-btn" onclick="chooseDeckMode('random')">🎲 ランダム</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const ANIMALS = ['bird','cat','monkey','pig','horse','frog'];
+const ANIMAL_EMOJI = {
+  bird:   { full:'🦅', track:'🐾', label:'鳥',  cssClass:'card-bird' },
+  cat:    { full:'🐱', track:'🐾', label:'猫',  cssClass:'card-cat' },
+  monkey: { full:'🐒', track:'🐾', label:'猿',  cssClass:'card-monkey' },
+  pig:    { full:'🐷', track:'🐾', label:'豚',  cssClass:'card-pig' },
+  horse:  { full:'🐴', track:'🐾', label:'馬',  cssClass:'card-horse' },
+  frog:   { full:'🐸', track:'🐾', label:'蛙',  cssClass:'card-frog' },
+};
+const TRACK_EMOJI = {
+  bird:'⋔', cat:'🐾', monkey:'✋', pig:'⋏', horse:'∩', frog:'✿'
+};
+
+function buildDeck() {
+  const deck = [];
+  for (const a of ANIMALS) {
+    for (let i=0;i<4;i++) deck.push({type:'full', animal:a});
+    for (let i=0;i<4;i++) deck.push({type:'track', animal:a});
+  }
+  for (let i=0;i<4;i++) deck.push({type:'joker', animal:null});
+  shuffle(deck);
+  return deck;
+}
+
+function shuffle(arr) {
+  for (let i=arr.length-1;i>0;i--) {
+    const j=Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]]=[arr[j],arr[i]];
+  }
+}
+
+let deck, board, heldCard, score, clearedCount, cardsPlaced;
+let animating = false;
+let winCount=0, perfectCount=0, gameCount=0;
+let bestScore=null, worstScore=null;
+let debugMode=false, debugDeckSnapshot=[], deckMode='standard';
+let editDeck=[];
+const EDIT_LIMITS={};
+
+function initGame() {
+  if (debugMode && deckMode==='edit') return;
+  deck = (debugMode && deckMode==='standard') ? buildDebugDeck() : buildDeck();
+  debugDeckSnapshot = debugMode ? [...deck].reverse() : [];
+  board=Array(9).fill(null);
+  heldCard=null; score=0; clearedCount=0; cardsPlaced=0; animating=false;
+  document.getElementById('board').classList.remove('gameover','win','perfect');
+  document.getElementById('log-list').innerHTML='';
+  updateUI(); renderBoard();
+  setTimeout(()=>drawCard(),400);
+}
+
+function highlightCells(on) {
+  document.querySelectorAll('.cell').forEach((el,i)=>{
+    if (board[i]===null) el.classList.toggle('can-place',on);
+    else el.classList.remove('can-place');
+  });
+}
+
+function updateUI() {
+  document.getElementById('score').textContent=score.toLocaleString();
+  document.getElementById('cleared-count').textContent=clearedCount+'枚';
+  document.getElementById('deck-remain').textContent=deck.length+'枚';
+  document.getElementById('deck-count-label').textContent='残り '+deck.length+'枚';
+  renderCardCounts();
+  renderDebugDeck();
+}
+
+function renderCardCounts() {
+  const isEdit=debugMode&&deckMode==='edit';
+  const counts={};
+  for (const a of ANIMALS){counts[a+'_full']=0;counts[a+'_track']=0;}
+  counts['joker']=0;
+  if (isEdit) {
+    for (const a of ANIMALS){
+      counts[a+'_full']=4-(EDIT_LIMITS[a+'_full']||0);
+      counts[a+'_track']=4-(EDIT_LIMITS[a+'_track']||0);
+    }
+    counts['joker']=4-(EDIT_LIMITS['joker']||0);
+  } else {
+    for (const c of deck) {
+      if (c.type==='joker') counts['joker']++;
+      else counts[c.animal+'_'+c.type]++;
+    }
+  }
+  const el=document.getElementById('card-counts');
+  const LABEL={bird:'鳥',cat:'猫',monkey:'猿',pig:'豚',horse:'馬',frog:'蛙'};
+  let html='<div class="card-counts-table">';
+  for (const a of ANIMALS) {
+    const d=ANIMAL_EMOJI[a];
+    const fullN=counts[a+'_full'], trackN=counts[a+'_track'];
+    let fc='',tc='';
+    for (let i=0;i<4;i++){
+      const gone=i>=fullN, cl=isEdit&&!gone;
+      fc+=`<div class="mini-card ${d.cssClass}${gone?' zero':''}${cl?' clickable':''}" ${cl?`onclick="editAddCard('full','${a}')"`:''}>${d.full}</div>`;
+    }
+    for (let i=0;i<4;i++){
+      const gone=i>=trackN, cl=isEdit&&!gone;
+      tc+=`<div class="mini-card ${d.cssClass} track${gone?' zero':''}${cl?' clickable':''}" ${cl?`onclick="editAddCard('track','${a}')"`:''}>${TRACK_EMOJI[a]}</div>`;
+    }
+    html+=`<div class="count-row"><span class="count-animal-label">${LABEL[a]}</span><div class="count-cards">${fc}</div><div style="width:3px"></div><div class="count-cards">${tc}</div></div>`;
+  }
+  const jn=counts['joker']; let jc='';
+  for (let i=0;i<4;i++){
+    const gone=i>=jn, cl=isEdit&&!gone;
+    jc+=`<div class="mini-card card-joker${gone?' zero':''}${cl?' clickable':''}" ${cl?`onclick="editAddCard('joker',null)"`:''}">💀</div>`;
+  }
+  html+=`<div class="count-row"><span class="count-animal-label" style="font-size:0.5rem">Jkr</span><div class="count-cards">${jc}</div></div></div>`;
+  el.innerHTML=html;
+}
+
+function cardHTML(card) {
+  if (!card) return '';
+  if (card.type==='joker') return `<div class="card-face card-joker"><span class="card-emoji">💀</span><span class="card-label">JOKER</span></div>`;
+  const d=ANIMAL_EMOJI[card.animal];
+  const emoji=card.type==='full'?d.full:TRACK_EMOJI[card.animal];
+  const label=d.label+(card.type==='track'?'(足跡)':'');
+  const tc=card.type==='track'?' track':'';
+  return `<div class="card-face ${d.cssClass}${tc}"><span class="card-emoji">${emoji}</span><span class="card-label">${label}</span></div>`;
+}
+
+function renderBoard() {
+  const boardEl=document.getElementById('board');
+  boardEl.innerHTML='';
+  for (let i=0;i<9;i++){
+    const cell=document.createElement('div');
+    cell.className='cell'+(board[i]?' occupied':' empty');
+    cell.dataset.idx=i;
+    cell.innerHTML=board[i]?cardHTML(board[i]):'';
+    if (board[i]===null&&heldCard){
+      cell.classList.add('can-place');
+      cell.addEventListener('click',()=>placeCard(i));
+    }
+    boardEl.appendChild(cell);
+  }
+}
+
+function renderNextCard() {
+  const el=document.getElementById('next-card-display');
+  el.innerHTML=heldCard?cardHTML(heldCard):'<div class="card-face card-joker" style="display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:#666">?</div>';
+}
+
+function addLog(msg,highlight=false){
+  const li=document.createElement('li');
+  li.textContent=msg;
+  if(highlight)li.className='highlight';
+  const list=document.getElementById('log-list');
+  list.insertBefore(li,list.firstChild);
+  while(list.children.length>40)list.removeChild(list.lastChild);
+
+  const liM=document.createElement('li');
+  liM.textContent=msg;
+  if(highlight)liM.className='highlight';
+  const listM=document.getElementById('log-list-mobile');
+  if(listM){listM.insertBefore(liM,listM.firstChild);while(listM.children.length>40)listM.removeChild(listM.lastChild);}
+}
+
+function drawCard(){
+  if(animating||deck.length===0||heldCard)return;
+  heldCard=deck.pop();
+  updateUI();renderNextCard();highlightCells(true);renderBoard();
+}
+
+async function placeCard(idx){
+  if(animating||!heldCard||board[idx]!==null)return;
+  animating=true;
+  board[idx]=heldCard; cardsPlaced++;
+  const placed=heldCard; heldCard=null;
+  renderNextCard();renderBoard();updateUI();
+  await sleep(50);
+  const pl=placed.type==='joker'?'ジョーカー':ANIMAL_EMOJI[placed.animal].label+(placed.type==='track'?'足跡':'');
+  addLog(`カード配置（${pl}）`);
+  const toVanish=getVanishSet(idx);
+  if(toVanish.size>0){
+    const va=[...toVanish];
+    const jc=va.filter(i=>board[i]&&board[i].type==='joker');
+    const ac=va.filter(i=>board[i]&&board[i].type!=='joker');
+    const isJT=jc.length===3&&ac.length===0;
+    va.forEach(i=>{
+      const cell=document.querySelector(`.cell[data-idx="${i}"]`);
+      if(!cell)return;
+      cell.classList.add(isJT?'vanishing-joker':'vanishing');
+    });
+    let pts=0;
+    if(ac.length>=2)pts+=100+(ac.length-2)*100;
+    if(jc.length===3)pts+=300;
+    score+=pts; clearedCount+=va.length;
+    if(isJT)addLog(`💀 ジョーカー3枚消滅！ ボーナス+300 合計${score.toLocaleString()}`,true);
+    else addLog(`✨ ${ac.length}枚消滅！ +${pts} 合計${score.toLocaleString()}`,true);
+    await sleep(isJT?750:500);
+    va.forEach(i=>{board[i]=null;});
+    renderBoard();updateUI();
+  }
+  const deckEmpty=deck.length===0;
+  if(deckEmpty&&cardsPlaced>=52){
+    const allCleared=board.every(x=>x===null);
+    if(allCleared){score+=1000;updateWinStats(true);await sleep(300);showOverlay('🌟 完全勝利！',1000);}
+    else{score+=500;updateWinStats(false);await sleep(300);showOverlay('🎉 勝利！',500);}
+    animating=false;return;
+  }
+  const filledCells=board.filter(x=>x!==null).length;
+  if(filledCells===9&&deck.length>0){
+    await sleep(300);gameCount++;
+    document.getElementById('game-count').textContent=gameCount;
+    const gcM=document.getElementById('game-count-mobile');if(gcM)gcM.textContent=gameCount;
+    showOverlay('💀 ゲームオーバー',0);
+    animating=false;return;
+  }
+  if(deck.length===0&&!heldCard){
+    if(filledCells>0&&filledCells<9){score+=500;updateWinStats(false);showOverlay('🎉 勝利！',500);animating=false;return;}
+    else if(filledCells===0){score+=1000;updateWinStats(true);showOverlay('🌟 完全勝利！',1000);animating=false;return;}
+  }
+  animating=false;
+  if(deck.length>0)setTimeout(()=>drawCard(),50);
+  else setTimeout(checkEndState,50);
+}
+
+function checkEndState(){
+  if(deck.length===0&&!heldCard){
+    const filled=board.filter(x=>x!==null).length;
+    if(filled===0){score+=1000;updateWinStats(true);showOverlay('🌟 完全勝利！',1000);}
+    else{score+=500;updateWinStats(false);showOverlay('🎉 勝利！',500);}
+  }
+}
+
+function getVanishSet(placedIdx){
+  const av=new Set(),jv=new Set();
+  const row=Math.floor(placedIdx/3),col=placedIdx%3;
+  checkLine([row*3,row*3+1,row*3+2],av);
+  checkLine([col,col+3,col+6],av);
+  if(av.size>0)addAdjacentJokers(av);
+  checkJokerLine([row*3,row*3+1,row*3+2],jv);
+  checkJokerLine([col,col+3,col+6],jv);
+  return new Set([...av,...jv]);
+}
+
+function checkLine(indices,vanish){
+  for(let i=0;i<indices.length-1;i++){
+    const idxA=indices[i],idxB=indices[i+1];
+    const cA=board[idxA],cB=board[idxB];
+    if(!cA||!cB)continue;
+    if(cA.type==='joker'||cB.type==='joker')continue;
+    if(cA.animal!==cB.animal)continue;
+    if((cA.type==='full'&&cB.type==='track')||(cA.type==='track'&&cB.type==='full')){vanish.add(idxA);vanish.add(idxB);}
+  }
+}
+
+function checkJokerLine(indices,vanish){
+  if(indices.every(i=>board[i]&&board[i].type==='joker'))indices.forEach(i=>vanish.add(i));
+}
+
+function addAdjacentJokers(vanish){
+  const toAdd=new Set();
+  for(const idx of vanish){
+    const row=Math.floor(idx/3),col=idx%3;
+    const nb=[];
+    if(row>0)nb.push((row-1)*3+col);
+    if(row<2)nb.push((row+1)*3+col);
+    if(col>0)nb.push(row*3+(col-1));
+    if(col<2)nb.push(row*3+(col+1));
+    for(const n of nb)if(!vanish.has(n)&&board[n]&&board[n].type==='joker')toAdd.add(n);
+  }
+  toAdd.forEach(i=>vanish.add(i));
+}
+
+function updateWinStats(isPerfect=false){
+  winCount++;gameCount++;
+  if(isPerfect)perfectCount++;
+  if(bestScore===null||score>bestScore)bestScore=score;
+  if(worstScore===null||score<worstScore)worstScore=score;
+  const ids=['win-count','perfect-count','game-count','best-score','worst-score'];
+  const vals=[winCount,perfectCount,gameCount,bestScore.toLocaleString(),worstScore.toLocaleString()];
+  ids.forEach((id,i)=>{
+    const el=document.getElementById(id); if(el)el.textContent=vals[i];
+    const elM=document.getElementById(id+'-mobile'); if(elM)elM.textContent=vals[i];
+  });
+}
+
+function showOverlay(title,bonus){
+  updateUI();
+  const isGameOver=title.includes('ゲームオーバー');
+  const isPerfect=title.includes('完全勝利');
+  if(isGameOver){
+    addLog(`${title}　${score.toLocaleString()}`,true);
+    document.getElementById('board').classList.add('gameover');
+  } else if(isPerfect){
+    addLog(`完全勝利！！ ボーナス+${bonus.toLocaleString()} 合計${score.toLocaleString()}`,true);
+    document.getElementById('board').classList.add('perfect');
+  } else {
+    addLog(`勝利！ ボーナス+${bonus.toLocaleString()} 合計${score.toLocaleString()}`,true);
+    document.getElementById('board').classList.add('win');
+  }
+  const icon=isGameOver?'💀':isPerfect?'🌟':'🎉';
+  const label=isGameOver?'Game Over':isPerfect?'完全勝利':'勝利';
+  const color=isGameOver?'#e94560':isPerfect?'#f5a623':'#42a5f5';
+  const bgColor=isGameOver?'rgba(0,0,0,0.3)':isPerfect?'rgba(180,120,0,0.35)':'rgba(20,80,160,0.45)';
+  const wrap=document.getElementById('next-card-display');
+  wrap.innerHTML=`<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:${bgColor};border-radius:8px;padding:6px;box-sizing:border-box;">
+    <span style="font-size:1.5rem;line-height:1;">${icon}</span>
+    <span style="font-size:0.65rem;font-weight:700;color:${color};letter-spacing:1px;">${label}</span>
+    <span style="font-family:'Fredoka One',cursive;font-size:0.85rem;color:#f5a623;line-height:1.2;">${score.toLocaleString()}</span>
+    <button class="btn btn-primary" onclick="initGame()" style="font-size:0.72rem;padding:5px 0;width:100%;margin-top:2px;">もう一度</button>
+  </div>`;
+}
+
+function setDeckMode(mode){
+  deckMode=mode;
+  const editStatus=document.getElementById('edit-status');
+  if(mode==='edit'){
+    editDeck=[];
+    for(const a of ANIMALS){EDIT_LIMITS[a+'_full']=0;EDIT_LIMITS[a+'_track']=0;}
+    EDIT_LIMITS['joker']=0;
+    editStatus.style.display='';
+    document.getElementById('edit-count').textContent='0';
+    deck=[];debugDeckSnapshot=[];
+    board=Array(9).fill(null);heldCard=null;score=0;clearedCount=0;cardsPlaced=0;animating=false;
+    document.getElementById('log-list').innerHTML='';
+    updateUI();renderBoard();renderDebugDeck();
+  } else {
+    editStatus.style.display='none';
+    initGame();
+  }
+}
+
+function editAddCard(type,animal){
+  if(deckMode!=='edit')return;
+  const key=type==='joker'?'joker':animal+'_'+type;
+  if(EDIT_LIMITS[key]>=4)return;
+  EDIT_LIMITS[key]++;
+  editDeck.push(type==='joker'?{type:'joker',animal:null}:{type,animal});
+  document.getElementById('edit-count').textContent=editDeck.length;
+  debugDeckSnapshot=[...editDeck];
+  renderCardCounts();renderDebugDeck();
+  if(editDeck.length===52){
+    setTimeout(()=>{
+      deck=[...editDeck].reverse();
+      debugDeckSnapshot=[...editDeck];
+      deckMode='standard';
+      heldCard=null;score=0;clearedCount=0;cardsPlaced=0;animating=false;
+      document.getElementById('log-list').innerHTML='';
+      document.getElementById('edit-status').style.display='none';
+      updateUI();renderBoard();
+      setTimeout(()=>drawCard(),400);
+    },200);
+  }
+}
+
+function renderDebugDeck(){
+  if(!debugMode)return;
+  const panel=document.getElementById('debug-deck-panel');
+  if(panel)panel.style.display='';
+  const el=document.getElementById('debug-deck-display');
+  if(!el)return;
+  if(!debugDeckSnapshot||debugDeckSnapshot.length===0){el.innerHTML='';return;}
+  const actualDrawn=debugDeckSnapshot.length-deck.length;
+  const totalDrawn=actualDrawn;
+  let html='';
+  debugDeckSnapshot.forEach((card,i)=>{
+    const placed=i<totalDrawn-(heldCard?1:0);
+    const isCurrent=heldCard&&i===totalDrawn-1;
+    let cssClass,emoji,label;
+    if(card.type==='joker'){cssClass='card-joker';emoji='💀';label='JKR';}
+    else{
+      const d=ANIMAL_EMOJI[card.animal];
+      cssClass=d.cssClass+(card.type==='track'?' track':'');
+      emoji=card.type==='full'?d.full:TRACK_EMOJI[card.animal];
+      label=d.label+(card.type==='track'?'跡':'');
+    }
+    html+=`<div class="dbg-card ${cssClass}${placed?' used':''}${isCurrent?' current':''}">${emoji}<span style="font-size:0.5rem;opacity:0.8">${label}</span></div>`;
+  });
+  el.innerHTML=html;
+}
+
+function buildDebugDeck(){
+  const deck=[];
+  for(let i=0;i<3;i++)deck.push({type:'joker',animal:null});
+  for(let a=ANIMALS.length-1;a>=0;a--){
+    for(let i=0;i<4;i++){deck.push({type:'track',animal:ANIMALS[a]});deck.push({type:'full',animal:ANIMALS[a]});}
+  }
+  deck.push({type:'joker',animal:null});
+  return deck;
+}
+
+function enterDebug(){
+  debugMode=true;deckMode='standard';
+  document.getElementById('debug-link').style.display='none';
+  document.getElementById('normal-link').style.display='flex';
+  document.getElementById('debug-deck-panel').style.display='';
+  document.getElementById('edit-status').style.display='none';
+  initGame();
+}
+
+function exitDebug(){
+  debugMode=false;deckMode='standard';
+  document.getElementById('debug-link').style.display='block';
+  document.getElementById('normal-link').style.display='none';
+  document.getElementById('debug-deck-panel').style.display='none';
+  document.getElementById('edit-status').style.display='none';
+  initGame();
+}
+
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+function openDeckPopup(){document.getElementById('deck-popup-overlay').style.display='flex';}
+function closeDeckPopup(e){if(e&&e.target!==document.getElementById('deck-popup-overlay'))return;document.getElementById('deck-popup-overlay').style.display='none';}
+function chooseDeckMode(mode){document.getElementById('deck-popup-overlay').style.display='none';setDeckMode(mode);}
+
+initGame();
+</script>
+
+<div id="debug-link" style="position:fixed;bottom:8px;right:12px;font-size:0.65rem;color:#333;cursor:pointer;opacity:0.4;" onclick="enterDebug()">debug</div>
+<div id="normal-link" style="position:fixed;bottom:8px;right:12px;display:none;gap:8px;align-items:center;">
+  <span style="font-size:0.65rem;color:var(--accent);cursor:pointer;" onclick="openDeckPopup()">デッキ選択</span>
+  <span style="font-size:0.65rem;color:#888;cursor:pointer;" onclick="exitDebug()">通常モード</span>
+</div>
+</body>
+</html>
+
