@@ -280,7 +280,7 @@
 <body>
 
 <h1>🐾 Whose Feet?</h1>
-<p class="subtitle">動物とその足跡を揃えて消そう！ <span style="font-size:0.7rem;opacity:0.5;">Ver2.01c</span></p>
+<p class="subtitle">動物とその足跡を揃えて消そう！ <span style="font-size:0.7rem;opacity:0.5;">Ver2.01d</span></p>
 
 <div class="game-wrap">
   <div class="board-section">
@@ -495,7 +495,7 @@ function cardHTML(card) {
   if (card.type==='joker') return `<div class="card-face card-joker"><span class="card-emoji">💀</span><span class="card-label">JOKER</span></div>`;
   const d=ANIMAL_EMOJI[card.animal];
   const emoji=card.type==='full'?d.full:TRACK_EMOJI[card.animal];
-  const label=d.label+(card.type==='track'?'(足跡)':'(動物)');  
+  const label=d.label+(card.type==='track'?'(足跡)':'');
   const tc=card.type==='track'?' track':'';
   return `<div class="card-face ${d.cssClass}${tc}"><span class="card-emoji">${emoji}</span><span class="card-label">${label}</span></div>`;
 }
@@ -549,7 +549,7 @@ async function placeCard(idx){
   const placed=heldCard; heldCard=null;
   renderNextCard();renderBoard();updateUI();
   await sleep(50);
-  const pl=placed.type==='joker'?'ジョーカー':ANIMAL_EMOJI[placed.animal].label+(placed.type==='track'?'足跡':'動物');
+  const pl=placed.type==='joker'?'ジョーカー':ANIMAL_EMOJI[placed.animal].label+(placed.type==='track'?'足跡':'');
   addLog(`カード配置（${pl}）`);
   const toVanish=getVanishSet(idx);
   if(toVanish.size>0){
@@ -736,16 +736,17 @@ function renderDebugDeck(){
   const actualDrawn=debugDeckSnapshot.length-deck.length;
   const totalDrawn=actualDrawn;
   let html='';
+  const isEditMode=debugMode&&deckMode==='edit';
   debugDeckSnapshot.forEach((card,i)=>{
-    const placed=i<totalDrawn-(heldCard?1:0);
-    const isCurrent=heldCard&&i===totalDrawn-1;
+    const placed=!isEditMode&&i<totalDrawn-(heldCard?1:0);
+    const isCurrent=!isEditMode&&heldCard&&i===totalDrawn-1;
     let cssClass,emoji,label;
     if(card.type==='joker'){cssClass='card-joker';emoji='💀';label='JKR';}
     else{
       const d=ANIMAL_EMOJI[card.animal];
       cssClass=d.cssClass+(card.type==='track'?' track':'');
       emoji=card.type==='full'?d.full:TRACK_EMOJI[card.animal];
-      label=d.label+(card.type==='track'?'足跡':'動物');
+      label=d.label+(card.type==='track'?'足跡':'');
     }
     html+=`<div class="dbg-card ${cssClass}${placed?' used':''}${isCurrent?' current':''}">${emoji}<span style="font-size:0.5rem;opacity:0.8">${label}</span></div>`;
   });
@@ -795,3 +796,4 @@ initGame();
 </div>
 </body>
 </html>
+
