@@ -290,7 +290,7 @@
 <body>
 
 <h1>🐾 Whose Feet?</h1>
-<p class="subtitle">動物とその足跡を揃えて消そう！ <span style="font-size:0.7rem;opacity:0.5;">Ver2.03a</span></p>
+<p class="subtitle">動物とその足跡を揃えて消そう！ <span style="font-size:0.7rem;opacity:0.5;">Ver2.03b</span></p>
 
 <div class="game-wrap">
   <div class="board-section">
@@ -412,13 +412,25 @@ let animating = false;
 let winCount=0, perfectCount=0, gameCount=0;
 let bestScore=null, worstScore=null;
 let debugMode=false, debugDeckSnapshot=[], deckMode='standard';
+let lastDeck=[];
 let editDeck=[];
 const EDIT_LIMITS={};
 
 function initGame() {
   if (debugMode && deckMode==='edit') return;
-  deck = (debugMode && deckMode==='standard') ? buildDebugDeck() : buildDeck();
-  debugDeckSnapshot = debugMode ? [...deck].reverse() : [];
+  if (debugMode && deckMode==='standard') {
+    // 標準デッキ：直前のスナップショットを再利用、なければ固定順
+    deck = debugDeckSnapshot.length>0 ? [...debugDeckSnapshot].reverse() : buildDebugDeck();
+    debugDeckSnapshot = [...deck].reverse();
+  } else if (debugMode && deckMode==='random') {
+    // ランダム：直前のスナップショットを再利用、なければ新規ランダム
+    deck = debugDeckSnapshot.length>0 ? [...debugDeckSnapshot].reverse() : buildDeck();
+    debugDeckSnapshot = [...deck].reverse();
+  } else {
+    deck = buildDeck();
+    lastDeck = [...deck].reverse();
+    debugDeckSnapshot = [];
+  }
   board=Array(9).fill(null);
   heldCard=null; score=0; clearedCount=0; cardsPlaced=0; animating=false;
   document.getElementById('board').classList.remove('gameover','win','perfect');
@@ -811,7 +823,19 @@ function enterDebug(){
   document.getElementById('normal-link').style.display='flex';
   document.getElementById('debug-deck-panel').style.display='';
   document.getElementById('edit-status').style.display='none';
-  initGame();
+  // 直前のデッキを再利用（あれば）
+  if(lastDeck.length>0){
+    deck=[...lastDeck].reverse();
+    debugDeckSnapshot=[...lastDeck];
+    board=Array(9).fill(null);
+    heldCard=null;score=0;clearedCount=0;cardsPlaced=0;animating=false;
+    document.getElementById('board').classList.remove('gameover','win','perfect');
+    document.getElementById('log-list').innerHTML='';
+    updateUI();renderBoard();
+    setTimeout(()=>drawCard(),400);
+  } else {
+    initGame();
+  }
 }
 
 function exitDebug(){
@@ -826,7 +850,11 @@ function exitDebug(){
 function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
 function openDeckPopup(){document.getElementById('deck-popup-overlay').style.display='flex';}
 function closeDeckPopup(e){if(e&&e.target!==document.getElementById('deck-popup-overlay'))return;document.getElementById('deck-popup-overlay').style.display='none';}
-function chooseDeckMode(mode){document.getElementById('deck-popup-overlay').style.display='none';setDeckMode(mode);}
+function chooseDeckMode(mode){
+  document.getElementById('deck-popup-overlay').style.display='none';
+  if(debugMode && (mode==='standard' || mode==='random')) debugDeckSnapshot=[];
+  setDeckMode(mode);
+}
 
 initGame();
 </script>
@@ -838,3 +866,4 @@ initGame();
 </div>
 </body>
 </html>
+
