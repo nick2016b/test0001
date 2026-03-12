@@ -290,7 +290,7 @@
 <body>
 
 <h1>🐾 Whose Feet?</h1>
-<p class="subtitle">動物とその足跡を揃えて消そう！ <span style="font-size:0.7rem;opacity:0.5;">Ver2.02a</span></p>
+<p class="subtitle">動物とその足跡を揃えて消そう！ <span style="font-size:0.7rem;opacity:0.5;">Ver2.03a</span></p>
 
 <div class="game-wrap">
   <div class="board-section">
@@ -324,7 +324,7 @@
     </div>
 
     <div class="panel">
-      <div class="panel-title">残り枚数</div>
+      <div class="panel-title">残りカード</div>
       <div id="edit-status" style="display:none;font-size:0.68rem;color:var(--gold);margin-bottom:6px;">クリックしてデッキを作成: <span id="edit-count">0</span>/52</div>
       <div id="card-counts"></div>
     </div>
@@ -339,14 +339,14 @@
     <div class="panel">
       <p class="inst">
         <strong>ルール：</strong><br>
-        • 同じ動物＋足跡カードが縦か横に揃えば消える<br>
-        • 隣接するジョーカーも一緒に消える（得点には無関係）<br>
-        • 2枚消滅時は+100、1枚増える毎に+100/枚<br>
-        • 同じカードが縦か横に3枚揃えばボーナス+100（消えない）<br>
-        • ジョーカーが3枚揃った時だけ消えてボーナス+300<br>
-        • 9マス全て埋まったらゲームオーバー<br>
-        • 全てのカードを置ければ勝利！ボーナス+500<br>
-        • 最後に全てのカードを消せば完全勝利！ボーナス+1000
+        ・ 同じ動物＋足跡カードが縦か横に揃えば消える<br>
+        ・ 2枚消滅時は+100、1枚増える毎に+100/枚<br>
+        ・ 隣接するジョーカーも消えるが得点には無関係<br>
+        ・ 同カードが縦か横に3枚揃えばボーナス+100(消えない)<br>
+        ・ ジョーカーが3枚揃った時だけ消えてボーナス+300<br>
+        ・ カードを置けなくなればゲームオーバー<br>
+        ・ 全てのカードを置けば勝利！ボーナス+500<br>
+        ・ 最後に全てのカードを消せば完全勝利！ボーナス+1000
       </p>
     </div>
 
@@ -378,12 +378,12 @@
 <script>
 const ANIMALS = ['bird','cat','monkey','pig','horse','frog'];
 const ANIMAL_EMOJI = {
-  bird:   { full:'🦅', track:'🐾', label:'鳥',  cssClass:'card-bird' },
-  cat:    { full:'🐱', track:'🐾', label:'猫',  cssClass:'card-cat' },
-  monkey: { full:'🐒', track:'🐾', label:'猿',  cssClass:'card-monkey' },
-  pig:    { full:'🐷', track:'🐾', label:'豚',  cssClass:'card-pig' },
-  horse:  { full:'🐴', track:'🐾', label:'馬',  cssClass:'card-horse' },
-  frog:   { full:'🐸', track:'🐾', label:'蛙',  cssClass:'card-frog' },
+  bird:   { full:'🦅', track:'🐾', label:'BIRD',   cssClass:'card-bird' },
+  cat:    { full:'🐱', track:'🐾', label:'CAT',    cssClass:'card-cat' },
+  monkey: { full:'🐒', track:'🐾', label:'MONKEY', cssClass:'card-monkey' },
+  pig:    { full:'🐷', track:'🐾', label:'PIG',    cssClass:'card-pig' },
+  horse:  { full:'🐴', track:'🐾', label:'HORSE',  cssClass:'card-horse' },
+  frog:   { full:'🐸', track:'🐾', label:'FROG',   cssClass:'card-frog' },
 };
 const TRACK_EMOJI = {
   bird:'⋔', cat:'🐾', monkey:'✋', pig:'⋏', horse:'∩', frog:'✿'
@@ -506,7 +506,7 @@ function cardHTML(card) {
   if (card.type==='joker') return `<div class="card-face card-joker"><span class="card-emoji">💀</span><span class="card-label">JOKER</span></div>`;
   const d=ANIMAL_EMOJI[card.animal];
   const emoji=card.type==='full'?d.full:TRACK_EMOJI[card.animal];
-  const label=d.label+(card.type==='track'?'(足跡)':'');
+  const label=d.label;
   const tc=card.type==='track'?' track':'';
   return `<div class="card-face ${d.cssClass}${tc}"><span class="card-emoji">${emoji}</span><span class="card-label">${label}</span></div>`;
 }
@@ -560,7 +560,7 @@ async function placeCard(idx){
   const placed=heldCard; heldCard=null;
   renderNextCard();renderBoard();updateUI();
   await sleep(50);
-  const pl=placed.type==='joker'?'ジョーカー':ANIMAL_EMOJI[placed.animal].label+(placed.type==='track'?'足跡':'');
+  const pl=placed.type==='joker'?'ジョーカー':({bird:'鳥',cat:'猫',monkey:'猿',pig:'豚',horse:'馬',frog:'蛙'})[placed.animal]+(placed.type==='track'?'（足跡）':'');
   addLog(`カード配置（${pl}）`);
   const toVanish=getVanishSet(idx);
   if(toVanish.size>0){
@@ -838,4 +838,3 @@ initGame();
 </div>
 </body>
 </html>
-
