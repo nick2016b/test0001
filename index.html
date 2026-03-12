@@ -157,6 +157,16 @@
   .board.perfect { animation: perfect-blink 0.8s ease-in-out forwards; }
   .board.gameover .cell.occupied .card-face { }
 
+  @keyframes bonus-flash {
+    0%   { filter: brightness(1); transform: scale(1); }
+    20%  { filter: brightness(2.5); transform: scale(1.08); }
+    40%  { filter: brightness(1); transform: scale(1); }
+    60%  { filter: brightness(2.5); transform: scale(1.08); }
+    80%  { filter: brightness(1); transform: scale(1); }
+    100% { filter: brightness(1); transform: scale(1); }
+  }
+  .cell.bonus-flashing .card-face { animation: bonus-flash 0.6s ease-in-out forwards; }
+
   @keyframes joker-blink {
     0%   { opacity: 1; filter: brightness(1); }
     15%  { opacity: 0.1; filter: brightness(3); }
@@ -280,7 +290,7 @@
 <body>
 
 <h1>🐾 Whose Feet?</h1>
-<p class="subtitle">動物とその足跡を揃えて消そう！ <span style="font-size:0.7rem;opacity:0.5;">Ver2.01d</span></p>
+<p class="subtitle">動物とその足跡を揃えて消そう！ <span style="font-size:0.7rem;opacity:0.5;">Ver2.02a</span></p>
 
 <div class="game-wrap">
   <div class="board-section">
@@ -329,13 +339,14 @@
     <div class="panel">
       <p class="inst">
         <strong>ルール：</strong><br>
-        • 動物 + 足跡が縦か横に隣接すれば消える<br>
-        • 隣のジョーカーも一緒に消える（得点には無関係）<br>
-        • 2枚消滅は+100、同時消滅は+100/枚<br>
-        • ジョーカー3枚が縦か横に揃えば消えて+300<br>
-        • 9マス埋まったらゲームオーバー<br>
-        • 全52枚置ければ勝利！+500<br>
-        • 最後にすべて消したら完全勝利！+1000
+        • 同じ動物＋足跡カードが縦か横に揃えば消える<br>
+        • 隣接するジョーカーも一緒に消える（得点には無関係）<br>
+        • 2枚消滅時は+100、1枚増える毎に+100/枚<br>
+        • 同じカードが縦か横に3枚揃えばボーナス+100（消えない）<br>
+        • ジョーカーが3枚揃った時だけ消えてボーナス+300<br>
+        • 9マス全て埋まったらゲームオーバー<br>
+        • 全てのカードを置ければ勝利！ボーナス+500<br>
+        • 最後に全てのカードを消せば完全勝利！ボーナス+1000
       </p>
     </div>
 
@@ -572,6 +583,19 @@ async function placeCard(idx){
     va.forEach(i=>{board[i]=null;});
     renderBoard();updateUI();
   }
+  // 同じカード3枚ライン揃いボーナス（消滅後に判定・消えない）
+  const {bonus: lineBonus, lines: bonusLines}=getSameCardLineBonus(idx);
+  if(lineBonus>0){
+    const flashSet=new Set(bonusLines.flat());
+    flashSet.forEach(i=>{
+      const cell=document.querySelector(`.cell[data-idx="${i}"]`);
+      if(cell){cell.classList.add('bonus-flashing');setTimeout(()=>cell.classList.remove('bonus-flashing'),650);}
+    });
+    await sleep(650);
+    score+=lineBonus;
+    addLog(`⭐ 同じカード3枚揃い！ ボーナス+${lineBonus} 合計${score.toLocaleString()}`,true);
+    updateUI();
+  }
   const deckEmpty=deck.length===0;
   if(deckEmpty&&cardsPlaced>=52){
     const allCleared=board.every(x=>x===null);
@@ -642,6 +666,24 @@ function addAdjacentJokers(vanish){
     for(const n of nb)if(!vanish.has(n)&&board[n]&&board[n].type==='joker')toAdd.add(n);
   }
   toAdd.forEach(i=>vanish.add(i));
+}
+
+function getSameCardLineBonus(placedIdx){
+  const row=Math.floor(placedIdx/3),col=placedIdx%3;
+  let bonus=0;
+  const bonusLines=[];
+  const lines=[[row*3,row*3+1,row*3+2],[col,col+3,col+6]];
+  for(const line of lines){
+    const cards=line.map(i=>board[i]);
+    if(cards.some(c=>!c))continue;
+    if(cards.some(c=>c.type==='joker'))continue;
+    if(cards[0].type===cards[1].type&&cards[1].type===cards[2].type&&
+       cards[0].animal===cards[1].animal&&cards[1].animal===cards[2].animal){
+      bonus+=100;
+      bonusLines.push(line);
+    }
+  }
+  return {bonus, lines:bonusLines};
 }
 
 function updateWinStats(isPerfect=false){
