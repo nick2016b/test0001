@@ -289,8 +289,8 @@
 </head>
 <body>
 
-<h1>🐾 Whose Feet?</h1>
-<p class="subtitle">動物とその足跡を揃えて消そう！ <span style="font-size:0.7rem;opacity:0.5;">Ver2.03c</span></p>
+<h1><span style="filter:brightness(2);">🐾</span> Whose Feet?</h1>
+<p class="subtitle">動物とその足跡を揃えて消そう！ <span style="font-size:0.7rem;opacity:0.5;">Ver2.03d</span></p>
 
 <div class="game-wrap">
   <div class="board-section">
@@ -435,6 +435,7 @@ function initGame() {
   heldCard=null; score=0; clearedCount=0; cardsPlaced=0; animating=false;
   document.getElementById('board').classList.remove('gameover','win','perfect');
   document.getElementById('log-list').innerHTML='';
+  const logM=document.getElementById('log-list-mobile');if(logM)logM.innerHTML='';
   updateUI(); renderBoard();
   setTimeout(()=>drawCard(),400);
 }
@@ -754,6 +755,7 @@ function setDeckMode(mode){
     deck=[];debugDeckSnapshot=[];
     board=Array(9).fill(null);heldCard=null;score=0;clearedCount=0;cardsPlaced=0;animating=false;
     document.getElementById('log-list').innerHTML='';
+    const logM2=document.getElementById('log-list-mobile');if(logM2)logM2.innerHTML='';
     updateUI();renderBoard();renderDebugDeck();
   } else {
     editStatus.style.display='none';
@@ -870,4 +872,3 @@ initGame();
 </div>
 </body>
 </html>
-
